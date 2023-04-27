@@ -16,6 +16,9 @@ df$text[1]
 ```
 
 ## Pre-processing
+
+With my own analysis, I found it is very important to think carefully about the preprocessing steps as it will impact your results. I go through the steps as mentioned by Denny & Spirling (2018) and create the R scripts manually step by step.
+
 **Pre-process in Python: Convert the emojis into texts.**
    In some of the cases, you may want to remove all emojis.
    In other cases, you want to include those emojis, thus want to convert to texts for future analysis. The format is something like this: `:sweatdroplets:`
@@ -138,3 +141,5 @@ vocab <- out$vocab
 meta <- out$meta
 ```
 
+
+Reference: Denny, M. J., & Spirling, A. (2018). Text preprocessing for unsupervised learning: Why it matters, when it misleads, and what to do about it. Political Analysis, 26(2), 168-189.
