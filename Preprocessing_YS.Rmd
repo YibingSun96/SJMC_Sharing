@@ -1,0 +1,140 @@
+---
+title: "Preprocessing_STM_0427_YS"
+output: html_document
+date: "2023-04-27"
+---
+
+```{r setup, warning = FALSE, message = FALSE}
+library('stm')
+library(emojifont)
+library(stringi)
+library(tm) # stopwords
+library(dplyr)
+
+df <- read.csv('YOURPATH', header = T)
+df$text[1]
+```
+
+## Pre-processing
+**Pre-process in Python: Convert the emojis into texts.**
+   In some of the cases, you may want to remove all emojis.
+   In other cases, you want to include those emojis, thus want to convert to texts for future analysis. The format is something like this: `:sweatdroplets:`
+   I didn't find good solutions in R. You can use python to preprocess the step using the package `emoji`.
+
+### 1. Remove duplicates just in case.
+```{r}
+# 1. Remove duplicates just in case.
+duplicated_rows <- duplicated(df)
+table(duplicated_rows) # no duplicated rows. Confirmed
+```
+
+### 2. convert to lower cases
+```{r}
+# 2. Convert to Lower Cases
+df$text_processed <- tolower(df$text)
+```
+
+
+### 3. Issues around RT
+CAUTION: This decision should be adjusted based on your needs of the project.
+In some cases, you can remove all the information after RT. Sometimes you want to remove "rt" only and reserve the information. Case by case dependent on your RQ.
+
+```{r}
+# a. Check the occurance of RTs
+df <- df %>% 
+  mutate(rt_count = str_count(text_processed, "\\brt\\b"))
+table(df$rt_count) # only 19 out of 2142 cases that have two rts in the column, trivial problem.
+# b. Remove everything after "RT"
+df$text_processed <- gsub("\\brt\\b.*", "", df$text_processed)
+df$text_processed <- ifelse(df$text_processed == "", NA, df$text_processed)
+# Create a filtered version.
+filtered_df <- df[complete.cases(df$text_processed), ] # 404 obs.
+```
+
+### 4. Remove URLs
+```{r}
+# 4. remove URLs
+filtered_df$text_processed <- gsub("http\\S+|www.\\S+", "", filtered_df$text_processed)
+```
+
+### 5. remove punctuations
+CAUTION: Rethink about the uses of @,#,and emojis. Revisit your RQ, whether you want to keep those or not?
+```{r}
+# a. if you want to remove all punctuations
+#filtered_df$text_processed <- str_replace_all(filtered_df$text_processed, "[[:punct:]]", "")
+# b. if you want to keep @, #, :.
+filtered_df$text_processed <- str_replace_all(filtered_df$text_processed, "[[:punct:]&&[^#@:]]", "")
+filtered_df$text_processed <- gsub("::", ": :", filtered_df$text_processed) #There are cases that there are two emojis together without a space between it.
+```
+
+### 6. remove numbers
+In some cases, you may want to keep numbers.
+```{r}
+# 6. remove numbers
+filtered_df$text_processed <- gsub("\\d+", "", filtered_df$text_processed)
+```
+
+### 7. remove stopwords
+This will be a repetitive process. 
+```{r}
+# start from the uncustomized version
+corpus <- Corpus(VectorSource(filtered_df$text_processed))
+corpus_cleaned <- tm_map(corpus, removeWords, stopwords("english"))
+text_cleaned <- sapply(corpus_cleaned, as.character)
+filtered_df <- filtered_df %>% 
+  mutate(text_processed = text_cleaned)
+
+## customized version after the first round
+
+#custom_stopwords <- c("REPLACE", "YOUR", "KEYWORDS") # replace with the ones that you need
+#corpus <- Corpus(VectorSource(filtered_df$text_processed))
+#corpus_cleaned <- tm_map(corpus, removeWords, custom_stopwords)
+#text_cleaned <- sapply(corpus_cleaned, as.character)
+#filtered_df <- filtered_df %>% 
+#  mutate(text_processed = text_cleaned)
+```
+
+### 8. Stemming/Lemmatization
+Both of the techniques could help to pre-process the data. Stemming is a simpler and faster process than lemmatization, but it may produce stemmed words that are not actual words.
+```{r}
+# 8. a. Stemming
+corpus_stemmed <- tm_map(corpus, stemDocument)
+text_stemmed <- sapply(corpus_stemmed, as.character)
+filtered_df <- filtered_df %>% 
+  mutate(text_processed = text_stemmed)
+
+# 8. b. Lemmatization
+## This trunk of code is produced by GPT and hasn't been tested
+# Load the udpipe and dplyr packages
+#library(udpipe)
+#library(dplyr)
+# Load the UDPipe English model
+#udmodel <- udpipe_download_model(language = "english")
+#udmodel <- udpipe_load_model(file = udmodel$file)
+# Define a function to perform lemmatization on a sentence
+#lemmatize_sentence <- function(sentence) {
+#  udpipe_annotate(udmodel, sentence) %>%
+#    as.data.frame() %>%
+#    filter(upos %in% c("NOUN", "VERB", "ADJ", "ADV")) %>%
+#    mutate(lemma = ifelse(upos == "NOUN", tolower(lemma), lemma))
+#}
+# Apply the lemmatization function to the text column in the dataframe
+#filtered_df <- filtered_df %>% 
+#  rowwise() %>% 
+#  mutate(text_lemmatized = list(lemmatize_sentence(text_processed))) %>% 
+#  ungroup() %>% 
+#  mutate(text_lemmatized = sapply(text_lemmatized, function(x) paste(x$lemma, collapse = " ")))
+```
+
+### Short versions using the package
+```{r}
+df$text_processed <- df
+processed <- textProcessor(df$text, metadata = df)
+out <- prepDocuments(processed$documents, processed$vocab, 
+                     processed$meta, 
+                     lower.thresh = 20)
+docs <- out$documents
+vocab <- out$vocab
+meta <- out$meta
+```
+
