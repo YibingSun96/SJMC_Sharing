@@ -1,0 +1,27 @@
+function getRandom(arr, n) {
+  var result = new Array(n),
+    len = arr.length,
+    taken = new Array(len);
+  if (n > len)
+    throw new RangeError('getRandom: more elements taken than available');
+  while (n--) {
+    var x = Math.floor(Math.random() * len);
+    result[n] = arr[x in taken ? taken[x] : x];
+    taken[x] = --len in taken ? taken[len] : len;
+  }
+  return result;
+}
+
+ 
+var mis_posts = ['mis_protein', 'mis_dna', 'mis_syncytin', 'mis_ovary', 'mis_period']; 
+var neu_posts = ['neutral1', 'neutral2', 'neutral3', 'neutral4', 'neutral5']; //pool for mundane
+ 
+//condition2 = control_ad
+var pool =  [['mis_protein', 'cor_protein_control_ad'], ['mis_dna', 'cor_dna_control_ad'], ['mis_syncytin','cor_syncytin_control_ad'], ['mis_ovary','cor_ovary_control_ad'], ['mis_period','cor_period_control_ad']];
+var my_posts_selected = getRandom(pool,1);
+var my_post_selected = my_posts_selected.flat(); // flat the array to ensure neutral could be inserted randomly
+var neu_post_selected = getRandom(neu_posts, 1);
+var x = Math.floor(Math.random() * 3);
+my_post_selected.splice(x, 0 ,neu_post_selected); //insert the neutral randomly
+var output = my_post_selected.flat(); //flat the array
+console.log("control_ad:", output);
